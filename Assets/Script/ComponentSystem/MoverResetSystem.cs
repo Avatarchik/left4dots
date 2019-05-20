@@ -21,6 +21,8 @@ namespace Left4Dots.ComponentSystem
 			{
 				float3 position = translation.Value;
 
+				// #SteveD >>> remove branching
+
 				// #SteveD >>> get magic boundary number from prefab/gameobject..
 				if (math.lengthsq(position) > m_maxDistanceSq)
 				{
