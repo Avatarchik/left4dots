@@ -29,13 +29,13 @@ namespace Left4Dots.System
 				
 				for (int x = min.x; x <= max.x; ++x)
 				{
-					for (int y = min.y; y <= max.y; ++y)
+					for (int z = min.y; z <= max.y; ++z)
 					{
 						// instantiate
 						var instance = m_commandBuffer.Instantiate(index, spawner.m_prefab);
 
 						// position
-						float3 position = new float3(x, 0.0f, y);
+						float3 position = new float3(x, 0.0f, z);
 						// set translation component
 						m_commandBuffer.SetComponent(
 							index,
