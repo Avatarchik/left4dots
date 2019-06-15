@@ -5,6 +5,8 @@ using Unity.Jobs;
 using Unity.Mathematics;
 using Unity.Transforms;
 
+// #SteveD >>> set QuadTreeOccupant (shared) after spawn job? New job
+
 namespace Left4Dots.System
 {
 	// JobComponentSystems can run on worker threads
@@ -37,14 +39,20 @@ namespace Left4Dots.System
 						// position
 						float3 position = new float3(x, 0.0f, z);
 						// set translation component
-						m_commandBuffer.SetComponent(
-							index,
-							instance,
+						m_commandBuffer.SetComponent(index, instance,
 							new Translation
 							{
 								Value = position
 							}
 						);
+
+						// quad tree occupant
+						//m_commandBuffer.SetSharedComponent(index, instance, 
+						//	new QuadTreeOccupant()
+						//	{
+						//		m_partitionId = 0
+						//	}
+						//);
 					}
 				}
 
@@ -92,6 +100,7 @@ namespace Left4Dots.System
 			// the entities and placing them)
 			// we need to tell the barrier system which job it needs to complete before it can play back the commands
 			m_entityCommandBufferSystem.AddJobHandleForProducer(spawnJobHandle);
+			
 			return spawnJobHandle;
 		}
 	}
