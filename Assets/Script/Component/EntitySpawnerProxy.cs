@@ -23,7 +23,7 @@ namespace Left4Dots.Component
 
 		public void Convert(Entity entity, EntityManager dstManager, GameObjectConversionSystem conversionSystem)
 		{
-			var spawnerData = new EntitySpawner
+			EntitySpawnerData spawnerData = new EntitySpawnerData
 			{
 				// the referenced prefab will be converted due to DeclareReferencedPrefabs
 				// here we simply map the game object to an entity reference to that prefab

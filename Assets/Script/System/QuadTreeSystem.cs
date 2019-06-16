@@ -1,65 +1,107 @@
-﻿using Unity.Entities;
+﻿using Unity.Collections;
+using Unity.Entities;
 using Unity.Jobs;
-using Unity.Mathematics;
 using UnityEngine;
+
+// #SteveD >>> create quad tree system from gameobject so we can specify max depth, split trigger, merge trigger
+//			>> see EntitySpawnerSystem for pulling in proxy variables
 
 namespace Left4Dots.System
 {
 	public class QuadTreeSystem : JobComponentSystem
 	{
-		private const uint k_occupantCountMask			= 0b_00000000_11111111_11111111_11111111;
-		private const byte k_occupantCountShift			= 0;
-
-		private const uint k_depthMask					= 0b_00000111_00000000_00000000_00000000;
-		private const byte k_depthShift					= 24;
-
-		private const uint k_isSplitMask				= 0b_00001000_00000000_00000000_00000000;
-		private const byte k_isSplitShift				= 27;
+		private NativeArray<QuadTreePartition> m_partitions;
 
 		// ----------------------------------------------------------------------------
 
-		public struct QuadTreePartition
+		protected override void OnCreateManager()
 		{
-			public half2 m_minBounds;
-			public half2 m_maxBounds;
-			public ushort m_partitionId;
-			public ushort m_parentPartitionId;
-			public uint m_data;
+			base.OnCreateManager();
 
-			// ------------------------------------------------------------------------
+			CreatePartitions(2);
+		}
 
-			private uint GetData(uint mask, byte shift)
+		private void CreatePartitions(byte maxDepth)
+		{
+			// Eg. Max depth: 7
+			//	 0			(0)
+			// + 1 << 2		(4)
+			// + 1 << 4		(16)
+			// + 1 << 6		(64)
+			// + 1 << 8		(256)
+			// + 1 << 10	(1,024)
+			// + 1 << 12	(4,096)
+			// + 1 << 14	(16,384)
+			// ----------------------
+			// =			21,844
+			// ----------------------
+
+			int partitionArraySize = 0;
+			for (int depth = 0; depth <= maxDepth; ++depth)
 			{
-				return (m_data & mask) >> shift;
+				partitionArraySize += 1 << (depth * 2);
 			}
-			
-			private void SetData(uint value, uint mask, byte shift)
-			{
-				m_data &= ~(~0u & mask);
-				m_data |= (value << shift);
-			}
-			
-			// ------------------------------------------------------------------------
+			m_partitions = new NativeArray<QuadTreePartition>(partitionArraySize, Allocator.Persistent);
 
-			public uint OccupantCount
-			{
-				get { return GetData(k_occupantCountMask, k_occupantCountShift); }
-				set { SetData(value, k_occupantCountMask, k_occupantCountShift); }
-			}
+			CreatePartitionRecursive(0, 0, maxDepth, 1, 0);
+			ValidatePartitions();
+		}
 
-			public uint Depth
+		// #steveD >>> fix, refactor
+		private void CreatePartitionRecursive(int splitNumber, int depth, int maxDepth, int parentSplitNumber, ushort parentUID)
+		{
+			// generate uid
+			ushort uid = (ushort)(splitNumber + ((parentSplitNumber - 1) * 4));
+			for (int i = 1; i < depth; ++i)
 			{
-				get { return GetData(k_depthMask, k_depthShift); }
-				set { SetData(value, k_depthMask, k_depthShift); }
+				uid += (ushort)(1 << (i * 2));
 			}
 
-			public bool IsSplit
+			// create partition
+			m_partitions[uid] = new QuadTreePartition()
 			{
-				get { return GetData(k_isSplitMask, k_isSplitShift) > 0; }
-				set { SetData((uint)(value ? 1 : 0), k_isSplitMask, k_isSplitShift); }
+				m_data = QuadTreePartition.k_isCreatedMask,
+				m_partitionUID = uid,
+				m_parentPartitionUID = parentUID,
+			};
+
+			// create children if we're not at max depth
+			if (depth < maxDepth)
+			{
+				int childDepth = depth + 1;
+				for (int i = 1; i <= 4; ++i)
+				{
+					CreatePartitionRecursive(i, childDepth, maxDepth, splitNumber, uid);
+				}
 			}
 		}
-		
+		// <<<<<<<<<<<
+
+		private void ValidatePartitions()
+		{
+			int countCreated = 0;
+			int countInvalid = 0;
+			
+			for (int i = 0; i < m_partitions.Length; ++i)
+			{
+				if (m_partitions[i].IsCreated)
+				{
+					++countCreated;
+				}
+				else
+				{
+					Debug.LogWarningFormat("[QuadTreeSystem::ValidatePartitions] invalid partition at index: {0}", i);
+					++countInvalid;
+				}
+			}
+
+			Debug.LogFormat("[QuadTreeSystem::ValidatePartitions] count created: {0}", countCreated);
+			Debug.LogFormat("[QuadTreeSystem::ValidatePartitions] count invalid: {0}", countInvalid);
+			
+			Debug.Assert(countCreated + countInvalid == m_partitions.Length);
+			Debug.Assert(countInvalid == 0);
+		}
+
 		// ----------------------------------------------------------------------------
 
 		protected override JobHandle OnUpdate(JobHandle inputDeps)
@@ -69,61 +111,14 @@ namespace Left4Dots.System
 
 		// ----------------------------------------------------------------------------
 
-#if UNITY_EDITOR
-
-		public void RunPartitionTest()
+		protected override void OnDestroyManager()
 		{
-			QuadTreePartition p = new QuadTreePartition()
+			base.OnDestroyManager();
+
+			if (m_partitions.IsCreated)
 			{
-				m_minBounds = new half2(),
-				m_maxBounds = new half2(),
-				m_partitionId = 0,
-				m_parentPartitionId = 0,
-				m_data = 0,
-			};
-
-			Debug.Log("QuadTreePartition Test\n");
-
-			Debug.Log("Depth\n");
-			Debug.LogFormat("   Depth: {0}\n", p.Depth);
-			p.Depth = 3;
-			Debug.LogFormat("   Depth: {0}\n", p.Depth);
-			Debug.Assert(p.Depth == 3);
-			p.Depth = 0;
-			Debug.LogFormat("   Depth: {0}\n", p.Depth);
-			Debug.Assert(p.Depth == 0);
-			p.Depth = 7;
-			Debug.LogFormat("   Depth: {0}\n", p.Depth);
-			Debug.Assert(p.Depth == 7);
-			Debug.Log("--------------------------------------------------\n");
-
-			Debug.Log("OccupantCount\n");
-			Debug.LogFormat("   OccupantCount: {0}\n", p.OccupantCount);
-			p.OccupantCount = 1_234_567;
-			Debug.LogFormat("   OccupantCount: {0}\n", p.OccupantCount);
-			Debug.Assert(p.OccupantCount == 1_234_567);
-			p.OccupantCount = 89;
-			Debug.LogFormat("   OccupantCount: {0}\n", p.OccupantCount);
-			Debug.Assert(p.OccupantCount == 89);
-			p.OccupantCount = 0;
-			Debug.LogFormat("   OccupantCount: {0}\n", p.OccupantCount);
-			Debug.Assert(p.OccupantCount == 0);
-			p.OccupantCount = 1;
-			Debug.LogFormat("   OccupantCount: {0}\n", p.OccupantCount);
-			Debug.Assert(p.OccupantCount == 1);
-			Debug.Log("--------------------------------------------------\n");
-
-			Debug.Log("Split\n");
-			Debug.LogFormat("   Partition IsSplit: {0}\n", p.IsSplit);
-			p.IsSplit = true;
-			Debug.LogFormat("   Partition IsSplit: {0}\n", p.IsSplit);
-			Debug.Assert(p.IsSplit);
-			p.IsSplit = false;
-			Debug.LogFormat("   Partition IsSplit: {0}\n", p.IsSplit);
-			Debug.Assert(false == p.IsSplit);
-			Debug.Log("--------------------------------------------------\n");
+				m_partitions.Dispose();
+			}
 		}
-
-#endif // UNITY_EDITOR
 	}
 }

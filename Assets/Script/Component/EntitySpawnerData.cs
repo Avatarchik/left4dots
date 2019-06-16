@@ -3,7 +3,7 @@ using Unity.Mathematics;
 
 namespace Left4Dots.Component
 {
-	public struct EntitySpawner : IComponentData
+	public struct EntitySpawnerData : IComponentData
 	{
 		public Entity m_prefab;
 		public int2 m_minBounds;

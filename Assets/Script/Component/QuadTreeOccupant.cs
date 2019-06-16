@@ -2,7 +2,7 @@
 
 namespace Left4Dots.Component
 {
-	public struct QuadTreeOccupant : ISharedComponentData
+	public struct QuadTreeOccupant : IComponentData
 	{
 		public ushort m_partitionId;
 	}

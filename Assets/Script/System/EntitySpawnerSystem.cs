@@ -5,8 +5,6 @@ using Unity.Jobs;
 using Unity.Mathematics;
 using Unity.Transforms;
 
-// #SteveD >>> set QuadTreeOccupant (shared) after spawn job? New job
-
 namespace Left4Dots.System
 {
 	// JobComponentSystems can run on worker threads
@@ -14,7 +12,7 @@ namespace Left4Dots.System
 	// EntitySpawnerSystem uses an EntityCommandBuffer to defer tasks that can't be done inside the Job
 	public class EntitySpawnerSystem : JobComponentSystem
 	{
-		struct EntitySpawnJob : IJobForEachWithEntity<EntitySpawner, LocalToWorld>
+		struct EntitySpawnJob : IJobForEachWithEntity<EntitySpawnerData, LocalToWorld>
 		{
 			public EntityCommandBuffer.Concurrent m_commandBuffer;
 
@@ -23,18 +21,18 @@ namespace Left4Dots.System
 			public void Execute(
 				Entity entity,
 				int index,
-				[ReadOnly] ref EntitySpawner spawner,
+				[ReadOnly] ref EntitySpawnerData spawnerData,
 				[ReadOnly] ref LocalToWorld location)
 			{
-				int2 min = spawner.m_minBounds;
-				int2 max = spawner.m_maxBounds;
+				int2 min = spawnerData.m_minBounds;
+				int2 max = spawnerData.m_maxBounds;
 				
 				for (int x = min.x; x <= max.x; ++x)
 				{
 					for (int z = min.y; z <= max.y; ++z)
 					{
 						// instantiate
-						var instance = m_commandBuffer.Instantiate(index, spawner.m_prefab);
+						var instance = m_commandBuffer.Instantiate(index, spawnerData.m_prefab);
 
 						// position
 						float3 position = new float3(x, 0.0f, z);
@@ -45,14 +43,6 @@ namespace Left4Dots.System
 								Value = position
 							}
 						);
-
-						// quad tree occupant
-						//m_commandBuffer.SetSharedComponent(index, instance, 
-						//	new QuadTreeOccupant()
-						//	{
-						//		m_partitionId = 0
-						//	}
-						//);
 					}
 				}
 
