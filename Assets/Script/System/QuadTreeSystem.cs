@@ -43,19 +43,22 @@ namespace Left4Dots.System
 			}
 			m_partitions = new NativeArray<QuadTreePartition>(partitionArraySize, Allocator.Persistent);
 
-			CreatePartitionRecursive(0, 0, maxDepth, 1, 0);
+			CreatePartitionRecursive(0, 0, maxDepth, 0, 0);
 			ValidatePartitions();
 		}
 
-		// #steveD >>> fix, refactor
-		private void CreatePartitionRecursive(int splitNumber, int depth, int maxDepth, int parentSplitNumber, ushort parentUID)
+		// #SteveD >>> refactor method signature
+		// #SteveD >>> fix (see initialisation logging). Add test?
+		private void CreatePartitionRecursive(int quadrant, int depth, int maxDepth, int parentQuadrant, ushort parentUID)
 		{
 			// generate uid
-			ushort uid = (ushort)(splitNumber + ((parentSplitNumber - 1) * 4));
-			for (int i = 1; i < depth; ++i)
+			ushort uid = 0;
+			for (int i = 1; i < depth - 1; ++i)
 			{
 				uid += (ushort)(1 << (i * 2));
 			}
+			uid += (ushort)(parentQuadrant * 4);
+			uid += (ushort)quadrant;
 
 			// create partition
 			m_partitions[uid] = new QuadTreePartition()
@@ -65,18 +68,16 @@ namespace Left4Dots.System
 				m_parentPartitionUID = parentUID,
 			};
 
-			// create children if we're not at max depth
+			// create children, if we're not at max depth
 			if (depth < maxDepth)
 			{
-				int childDepth = depth + 1;
-				for (int i = 1; i <= 4; ++i)
+				for (int i = 0; i <= 3; ++i)
 				{
-					CreatePartitionRecursive(i, childDepth, maxDepth, splitNumber, uid);
+					CreatePartitionRecursive(i, depth + 1, maxDepth, quadrant, uid);
 				}
 			}
 		}
-		// <<<<<<<<<<<
-
+		
 		private void ValidatePartitions()
 		{
 			int countCreated = 0;
