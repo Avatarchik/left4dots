@@ -3,9 +3,6 @@ using Unity.Entities;
 using Unity.Jobs;
 using UnityEngine;
 
-// #SteveD >>> create quad tree system from gameobject so we can specify max depth, split trigger, merge trigger
-//			>> see EntitySpawnerSystem for pulling in proxy variables
-
 namespace Left4Dots.System
 {
 	public class QuadTreeSystem : JobComponentSystem
@@ -18,7 +15,7 @@ namespace Left4Dots.System
 		{
 			base.OnCreateManager();
 
-			CreatePartitions(2);
+			CreatePartitions(3);
 		}
 
 		private void CreatePartitions(byte maxDepth)
@@ -36,6 +33,7 @@ namespace Left4Dots.System
 			// =			21,844
 			// ----------------------
 
+			// native memory
 			int partitionArraySize = 0;
 			for (int depth = 0; depth <= maxDepth; ++depth)
 			{
@@ -43,24 +41,38 @@ namespace Left4Dots.System
 			}
 			m_partitions = new NativeArray<QuadTreePartition>(partitionArraySize, Allocator.Persistent);
 
-			CreatePartitionRecursive(0, 0, maxDepth, 0, 0);
+			CreatePartitionRecursive(
+				GenerateUID(0, 0, 0), 
+				0, 0, 0, maxDepth
+			);
+			
 			ValidatePartitions();
 		}
-
-		// #SteveD >>> refactor method signature
-		// #SteveD >>> fix (see initialisation logging). Add test?
-		private void CreatePartitionRecursive(int quadrant, int depth, int maxDepth, int parentQuadrant, ushort parentUID)
+		
+		private ushort GenerateUID(int depth, int quadrant, int parentQuadrant)
 		{
-			// generate uid
 			ushort uid = 0;
-			for (int i = 1; i < depth - 1; ++i)
+			for (int i = 1; i < depth; ++i)
 			{
 				uid += (ushort)(1 << (i * 2));
 			}
-			uid += (ushort)(parentQuadrant * 4);
+
+			// #SteveD >>> ???
+			if (parentQuadrant > 0)
+			{
+				uid += (ushort)((parentQuadrant - 1) * 4);
+			}
+			// <<<<<<<<<<<			
+			
 			uid += (ushort)quadrant;
 
-			// create partition
+			return uid;
+		}
+
+		private void CreatePartitionRecursive(ushort uid, ushort parentUID, int quadrant, int depth, int maxDepth)
+		{
+			Debug.Assert(false == m_partitions[uid].IsCreated);
+
 			m_partitions[uid] = new QuadTreePartition()
 			{
 				m_data = QuadTreePartition.k_isCreatedMask,
@@ -68,12 +80,17 @@ namespace Left4Dots.System
 				m_parentPartitionUID = parentUID,
 			};
 
-			// create children, if we're not at max depth
-			if (depth < maxDepth)
+			Debug.LogFormat("[QuadTreeSystem::CreatePartitionRecursive] created partition {0} in quadrant {1} at depth {2} with parent {3}\n",
+				uid, quadrant, depth, parentUID);
+
+			int childDepth = depth + 1;
+			if (childDepth <= maxDepth)
 			{
-				for (int i = 0; i <= 3; ++i)
+				for (int i = 1; i <= 4; ++i)
 				{
-					CreatePartitionRecursive(i, depth + 1, maxDepth, quadrant, uid);
+					CreatePartitionRecursive(
+						GenerateUID(childDepth, i, quadrant),
+						uid, i, childDepth, maxDepth);
 				}
 			}
 		}

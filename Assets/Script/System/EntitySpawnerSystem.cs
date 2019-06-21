@@ -12,7 +12,7 @@ namespace Left4Dots.System
 	// EntitySpawnerSystem uses an EntityCommandBuffer to defer tasks that can't be done inside the Job
 	public class EntitySpawnerSystem : JobComponentSystem
 	{
-		struct EntitySpawnJob : IJobForEachWithEntity<EntitySpawnerData, LocalToWorld>
+		private struct EntitySpawnJob : IJobForEachWithEntity<EntitySpawnerData, LocalToWorld>
 		{
 			public EntityCommandBuffer.Concurrent m_commandBuffer;
 
