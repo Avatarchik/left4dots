@@ -1,7 +1,7 @@
 ﻿using Unity.Entities;
 using UnityEngine;
 
-namespace Left4Dots.Component
+namespace Left4Dots.QuadTree
 {
 	public class QuadTreeOccupantProxy : MonoBehaviour, IConvertGameObjectToEntity
 	{

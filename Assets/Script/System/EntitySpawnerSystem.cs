@@ -1,11 +1,10 @@
-﻿using Left4Dots.Component;
-using Unity.Collections;
+﻿using Unity.Collections;
 using Unity.Entities;
 using Unity.Jobs;
 using Unity.Mathematics;
 using Unity.Transforms;
 
-namespace Left4Dots.System
+namespace Left4Dots.Spawner
 {
 	// JobComponentSystems can run on worker threads
 	// however, creating and removing Entities can only be done on the main thread to prevent race conditions

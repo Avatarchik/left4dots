@@ -1,6 +1,6 @@
 ﻿using Unity.Entities;
 
-namespace Left4Dots.Component
+namespace Left4Dots.QuadTree
 {
 	public struct QuadTreeOccupant : IComponentData
 	{

@@ -7,7 +7,7 @@ using UnityEditor;
 using half2 = Unity.Mathematics.half2;
 using Random = Unity.Mathematics.Random;
 
-namespace Left4Dots.System
+namespace Left4Dots.QuadTree
 {
 	public struct QuadTreePartition
 	{

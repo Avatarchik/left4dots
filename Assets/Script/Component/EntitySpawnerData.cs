@@ -1,7 +1,7 @@
 ﻿using Unity.Entities;
 using Unity.Mathematics;
 
-namespace Left4Dots.Component
+namespace Left4Dots.Spawner
 {
 	public struct EntitySpawnerData : IComponentData
 	{

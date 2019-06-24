@@ -1,11 +1,14 @@
-﻿using Unity.Collections;
+﻿using Left4Dots.DebugUtils.Draw;
+using Unity.Collections;
 using Unity.Entities;
 using Unity.Jobs;
 using UnityEngine;
 
-namespace Left4Dots.System
+// #SteveD >>> specify max depth, bounds, split trigger & merge trigger from config *somewhere*
+
+namespace Left4Dots.QuadTree
 {
-	public class QuadTreeSystem : JobComponentSystem
+	public class QuadTreeSystem : JobComponentSystem, IDebugDrawable
 	{
 		private NativeArray<QuadTreePartition> m_partitions;
 
@@ -15,7 +18,9 @@ namespace Left4Dots.System
 		{
 			base.OnCreateManager();
 
-			CreatePartitions(3);
+			CreatePartitions(7); // #SteveD <<< replace magic number with config
+		
+			DebugDrawManager.Instance?.Register(this);
 		}
 
 		private void CreatePartitions(byte maxDepth)
@@ -32,7 +37,7 @@ namespace Left4Dots.System
 			// ----------------------
 			// =			21,844
 			// ----------------------
-
+			
 			// native memory
 			int partitionArraySize = 0;
 			for (int depth = 0; depth <= maxDepth; ++depth)
@@ -41,57 +46,51 @@ namespace Left4Dots.System
 			}
 			m_partitions = new NativeArray<QuadTreePartition>(partitionArraySize, Allocator.Persistent);
 
-			CreatePartitionRecursive(
-				GenerateUID(0, 0, 0), 
-				0, 0, 0, maxDepth
-			);
-			
+			CreatePartition(0, 0, 0);
+			CreateChildPartitions(0, 0, maxDepth);
 			ValidatePartitions();
 		}
-		
-		private ushort GenerateUID(int depth, int quadrant, int parentQuadrant)
-		{
-			ushort uid = 0;
-			for (int i = 1; i < depth; ++i)
-			{
-				uid += (ushort)(1 << (i * 2));
-			}
 
-			// #SteveD >>> ???
-			if (parentQuadrant > 0)
-			{
-				uid += (ushort)((parentQuadrant - 1) * 4);
-			}
-			// <<<<<<<<<<<			
-			
-			uid += (ushort)quadrant;
+		private ushort GenerateUID(ushort parentUID, byte partition)
+		{
+			ushort uid = (ushort)((parentUID << 2) + 1);
+			uid += partition;
+			Debug.Assert(false == m_partitions[uid].IsCreated);
 
 			return uid;
 		}
 
-		private void CreatePartitionRecursive(ushort uid, ushort parentUID, int quadrant, int depth, int maxDepth)
+		private void CreatePartitionRecursive(ushort parentUID, byte partition, byte depth, byte maxDepth)
 		{
-			Debug.Assert(false == m_partitions[uid].IsCreated);
+			ushort uid = GenerateUID(parentUID, partition);
+			CreatePartition(uid, parentUID, depth);
+			if (depth < maxDepth)
+			{
+				CreateChildPartitions(uid, depth, maxDepth);
+			}
+		}
 
+		private void CreatePartition(ushort uid, ushort parentUID, byte depth)
+		{
 			m_partitions[uid] = new QuadTreePartition()
 			{
 				m_data = QuadTreePartition.k_isCreatedMask,
 				m_partitionUID = uid,
 				m_parentPartitionUID = parentUID,
+				//m_minBounds <<--- #SteveD
+				//m_maxBounds <<--- #SteveD
 			};
 
-			Debug.LogFormat("[QuadTreeSystem::CreatePartitionRecursive] created partition {0} in quadrant {1} at depth {2} with parent {3}\n",
-				uid, quadrant, depth, parentUID);
+			//Debug.LogFormat("[QuadTreeSystem::CreatePartitionRecursive] created partition {0} at depth {1} with parent {2}\n",
+			//	uid, depth, parentUID);
+		}
 
-			int childDepth = depth + 1;
-			if (childDepth <= maxDepth)
+		private void CreateChildPartitions(ushort parentUID, byte parentDepth, byte maxDepth)
+		{
+			byte childDepth = (byte)(parentDepth + 1);
+			for (byte i = 0; i < 4; ++i)
 			{
-				for (int i = 1; i <= 4; ++i)
-				{
-					CreatePartitionRecursive(
-						GenerateUID(childDepth, i, quadrant),
-						uid, i, childDepth, maxDepth);
-				}
+				CreatePartitionRecursive(parentUID, i, childDepth, maxDepth);
 			}
 		}
 		
@@ -127,8 +126,6 @@ namespace Left4Dots.System
 			return inputDeps;
 		}
 
-		// ----------------------------------------------------------------------------
-
 		protected override void OnDestroyManager()
 		{
 			base.OnDestroyManager();
@@ -137,6 +134,26 @@ namespace Left4Dots.System
 			{
 				m_partitions.Dispose();
 			}
+		}
+
+		// ----------------------------------------------------------------------------
+		// IDebugDrawable -------------------------------------------------------------
+
+		public EDebugDrawCategory DebugDrawCategory { get { return EDebugDrawCategory.QuadTree; } }
+
+		public void DebugDraw()
+		{
+			DebugDrawManager.Instance?.DrawAABox2D(
+				DebugDrawCategory, 
+				new Vector2(-32.0f, -32.0f), 
+				new Vector2(32.0f, 32.0f), 
+				Color.red);
+
+			DebugDrawManager.Instance?.DrawAABox3D(
+				DebugDrawCategory, 
+				new Vector3(-32.0f, -32.0f, -32.0f), 
+				new Vector3(32.0f, 32.0f, 32.0f), 
+				Color.green);
 		}
 	}
 }
