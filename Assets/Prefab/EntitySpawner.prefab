@@ -57,9 +57,8 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 758126de8a257a147bea1a933191a959, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  m_prefab: {fileID: 1207562195789152823, guid: 794664b5885a5a448b2fe6851487c6fd,
+  m_prefab: {fileID: 1207562195789152823, guid: c836377d1c9da68488bbad678c066e18,
     type: 3}
-  m_count: 10000
   m_minBounds:
     x: -100
     y: -100

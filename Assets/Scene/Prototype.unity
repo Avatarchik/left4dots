@@ -94,8 +94,8 @@ LightmapSettings:
     m_PVRFilteringAtrousPositionSigmaDirect: 0.5
     m_PVRFilteringAtrousPositionSigmaIndirect: 2
     m_PVRFilteringAtrousPositionSigmaAO: 1
-    m_ShowResolutionOverlay: 1
     m_ExportTrainingData: 0
+    m_TrainingDataDestination: TrainingData
   m_LightingDataAsset: {fileID: 0}
   m_UseShadowmask: 1
 --- !u!196 &4
@@ -230,28 +230,28 @@ PrefabInstance:
     - target: {fileID: 1162300664606967404, guid: 9a1b0781db7b14242af0d5fe8b931d1a,
         type: 3}
       propertyPath: m_minBounds.x
-      value: -32
+      value: -100
       objectReference: {fileID: 0}
     - target: {fileID: 1162300664606967404, guid: 9a1b0781db7b14242af0d5fe8b931d1a,
         type: 3}
       propertyPath: m_minBounds.y
-      value: -32
+      value: -100
       objectReference: {fileID: 0}
     - target: {fileID: 1162300664606967404, guid: 9a1b0781db7b14242af0d5fe8b931d1a,
         type: 3}
       propertyPath: m_maxBounds.x
-      value: 32
+      value: 100
       objectReference: {fileID: 0}
     - target: {fileID: 1162300664606967404, guid: 9a1b0781db7b14242af0d5fe8b931d1a,
         type: 3}
       propertyPath: m_maxBounds.y
-      value: 32
+      value: 100
       objectReference: {fileID: 0}
     - target: {fileID: 1162300664606967404, guid: 9a1b0781db7b14242af0d5fe8b931d1a,
         type: 3}
       propertyPath: m_prefab
       value: 
-      objectReference: {fileID: 1207562195789152823, guid: 14a90bce9c997e2458c0e738dc2282c0,
+      objectReference: {fileID: 1207562195789152823, guid: c836377d1c9da68488bbad678c066e18,
         type: 3}
     m_RemovedComponents: []
   m_SourcePrefab: {fileID: 100100000, guid: 9a1b0781db7b14242af0d5fe8b931d1a, type: 3}

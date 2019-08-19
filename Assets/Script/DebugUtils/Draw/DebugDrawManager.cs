@@ -1,13 +1,17 @@
-﻿using Left4Dots.Extension;
+﻿using Left4Dots.ListExtension;
 using System.Collections.Generic;
+using Unity.Mathematics;
 using UnityEngine;
-
-// #SteveD >>> ComponentSystem::OnCreateManager is being called before DebugDrawManager::Awake
 
 namespace Left4Dots.DebugUtils.Draw
 {
 	public sealed class DebugDrawManager : MonoBehaviour
 	{
+		private static List<IDebugDrawable> s_pendingRegisteredDrawables = new List<IDebugDrawable>();
+		private static List<IDebugDrawable> s_pendingUnregisteredDrawables = new List<IDebugDrawable>();
+
+		// ----------------------------------------------------------------------------
+
 		private static DebugDrawManager m_instance = null;
 		public static DebugDrawManager Instance
 		{
@@ -49,6 +53,56 @@ namespace Left4Dots.DebugUtils.Draw
 		}
 
 		private void LateUpdate()
+		{
+			ProcessPendingRegisters();
+			ProcessPendingUnregsiters();
+			DebugDraw();
+		}
+
+		// ----------------------------------------------------------------------------
+
+		private void ProcessPendingRegisters()
+		{
+			for (int i = 0, count = s_pendingRegisteredDrawables.Count; i < count; ++i)
+			{
+				if (null == s_pendingRegisteredDrawables[i])
+				{
+					continue;
+				}
+
+				long category = CategoryAsLong(s_pendingRegisteredDrawables[i].DebugDrawCategory);
+				if (false == m_drawables.TryGetValue(category, out List<IDebugDrawable> drawables))
+				{
+					drawables = new List<IDebugDrawable>();
+					m_drawables.Add(category, drawables);
+				}
+
+				drawables.AddUnique(s_pendingRegisteredDrawables[i]);
+			}
+
+			s_pendingRegisteredDrawables.Clear();
+		}
+
+		private void ProcessPendingUnregsiters()
+		{
+			for (int i = 0, count = s_pendingUnregisteredDrawables.Count; i < count; ++i)
+			{
+				if (null == s_pendingUnregisteredDrawables[i])
+				{
+					continue;
+				}
+
+				long category = CategoryAsLong(s_pendingUnregisteredDrawables[i].DebugDrawCategory);
+				if (m_drawables.TryGetValue(category, out List<IDebugDrawable> drawables))
+				{
+					drawables.Remove(s_pendingUnregisteredDrawables[i]);
+				}
+			}
+
+			s_pendingUnregisteredDrawables.Clear();
+		}
+
+		private void DebugDraw()
 		{
 			foreach (var kvp in m_drawables)
 			{
@@ -96,34 +150,19 @@ namespace Left4Dots.DebugUtils.Draw
 
 		// ----------------------------------------------------------------------------
 
-		public void Register(IDebugDrawable drawable)
+		public static void Register(IDebugDrawable drawable)
 		{
-			EDebugDrawCategory category = drawable.DebugDrawCategory;
-			long longCategory = CategoryAsLong(category);
-
-			if (false == m_drawables.TryGetValue(longCategory, out List<IDebugDrawable> drawables))
-			{
-				drawables = new List<IDebugDrawable>();
-				m_drawables.Add(longCategory, drawables);
-			}
-
-			drawables.AddUnique(drawable);
+			s_pendingRegisteredDrawables.AddUnique(drawable);
 		}
 
-		public void Unregister(IDebugDrawable drawable)
+		public static void Unregister(IDebugDrawable drawable)
 		{
-			EDebugDrawCategory category = drawable.DebugDrawCategory;
-			long longCategory = CategoryAsLong(category);
-
-			if (m_drawables.TryGetValue(longCategory, out List<IDebugDrawable> drawables))
-			{
-				drawables.Remove(drawable);
-			}
+			s_pendingUnregisteredDrawables.AddUnique(drawable);
 		}
 
 		// ----------------------------------------------------------------------------
 
-		public void DrawLine(EDebugDrawCategory category, Vector3 from, Vector3 to, Color colour, float duration = 0.0f)
+		public void DrawLine(EDebugDrawCategory category, float3 from, float3 to, Color colour, float duration = 0.0f)
 		{
 			if (false == IsCategoryEnabled(category))
 			{
@@ -133,35 +172,37 @@ namespace Left4Dots.DebugUtils.Draw
 			Debug.DrawLine(from, to, colour, duration);
 		}
 
-		public void DrawAABox2D(EDebugDrawCategory category, Vector2 min, Vector2 max, Color colour, float duration = 0.0f)
+		public void DrawAABox2D(EDebugDrawCategory category, float2 min, float2 max, Color colour, float duration = 0.0f)
 		{
 			if (false == IsCategoryEnabled(category))
 			{
 				return;
 			}
 
-			Vector2 minXmaxY = new Vector2(max.x, min.y);
-			Vector2 maxXminY = new Vector2(min.x, max.y);
+			float3 minV3 = new float3(min.x, 0.0f, min.y);
+			float3 maxV3 = new float3(max.x, 0.0f, max.y);
+			float3 minXmaxY = new float3(min.x, 0.0f, max.y);
+			float3 maxXminY = new float3(max.x, 0.0f, min.y);
 			
-			DrawLine(category, min, minXmaxY, colour, duration);
-			DrawLine(category, min, maxXminY, colour, duration);
-			DrawLine(category, max, minXmaxY, colour, duration);
-			DrawLine(category, max, maxXminY, colour, duration);
+			DrawLine(category, minV3, minXmaxY, colour, duration);
+			DrawLine(category, minV3, maxXminY, colour, duration);
+			DrawLine(category, maxV3, minXmaxY, colour, duration);
+			DrawLine(category, maxV3, maxXminY, colour, duration);
 		}
 
-		public void DrawAABox3D(EDebugDrawCategory category, Vector3 min, Vector3 max, Color colour, float duration = 0.0f)
+		public void DrawAABox3D(EDebugDrawCategory category, float3 min, float3 max, Color colour, float duration = 0.0f)
 		{
 			if (false == IsCategoryEnabled(category))
 			{
 				return;
 			}
 
-			Vector3 minXminYmaxZ = new Vector3(min.x, min.y, max.z);
-			Vector3 minXmaxYminZ = new Vector3(min.x, max.y, min.z);
-			Vector3 maxXminYminZ = new Vector3(max.x, min.y, min.z);
-			Vector3 minXmaxYmaxZ = new Vector3(min.x, max.y, max.z);
-			Vector3 maxXmaxYminZ = new Vector3(max.x, max.y, min.z);
-			Vector3 maxXminYmaxZ = new Vector3(max.x, min.y, max.z);
+			float3 minXminYmaxZ = new float3(min.x, min.y, max.z);
+			float3 minXmaxYminZ = new float3(min.x, max.y, min.z);
+			float3 maxXminYminZ = new float3(max.x, min.y, min.z);
+			float3 minXmaxYmaxZ = new float3(min.x, max.y, max.z);
+			float3 maxXmaxYminZ = new float3(max.x, max.y, min.z);
+			float3 maxXminYmaxZ = new float3(max.x, min.y, max.z);
 
 			DrawLine(category, min, minXminYmaxZ, colour, duration);
 			DrawLine(category, min, minXmaxYminZ, colour, duration);
